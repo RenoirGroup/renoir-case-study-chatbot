@@ -6,9 +6,11 @@ from openai import OpenAI
 import os
 import random
 from uuid import uuid4
+import json
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", str(uuid4()))  # Secure random key for sessions
+app.secret_key = os.getenv("FLASK_SECRET_KEY", str(uuid4()))
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 CORS(app)
@@ -16,9 +18,9 @@ CORS(app)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 base_questions = [
-    "What is the client name and what was the client’s industry and location?",
+    "To start of wan you tell me the client's name, their industry and location?",
     "What were the main challenges or problems the client was facing before the project / were identified from the analysis? Try to cover things like process issues, cultural challenges, or operational bottlenecks.",
-    "What were the measurable goals for this project / what did we commit to following on from the analysis (if one was carried out)?",
+    "Were there any measurable goals committed for this project / what did we commit to, in terms of a business case, following on from the analysis (if one was carried out)?",
     "What were the main initiatives or tools introduced during the project? Please list at least 3 key initiatives.",
     "Let’s capture the results! Please share measurable gains such as throughput improvement, overtime reduction, or other financial or operational results.",
     "Do you have any client feedback or quotes we can include? Please include the client’s name and role if possible.",
@@ -31,16 +33,28 @@ encouragements = [
     "Got it!",
     "Perfect, let’s keep going.",
     "Thanks for the detail.",
-    "Alrighty, moving on!",
-    "Right, let's take it to the next one."
+    "That's good info, let's keep going!",
+    "Brilliant! Let's go on to the next question!"
 ]
 
 humorous_prompts = [
     "Hmm... I think you might be trolling me. Shall we try that again with a serious face on? 🤨",
-    "Unless your client *really* has talking koalas, let’s be a bit more realistic. 😄",
     "Are you *sure* that's what happened? Sounds like someone needs a coffee. ☕",
     "I’m pretty smart, but even I can't format nonsense into a case study. Want to give it another go?"
 ]
+
+def translate_text(text, lang):
+    if "english" in lang.lower():
+        return text
+    prompt = f"Translate this into {lang}: {text}"
+    try:
+        translated = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        ).choices[0].message.content.strip()
+        return translated
+    except:
+        return text
 
 @app.route("/")
 def home():
@@ -81,14 +95,7 @@ def chat():
             "If I need more detail at any point, I’ll ask – just answer as fully as you can. Ready? Let’s get started!"
         )
 
-        if "english" in state["language"].lower():
-            translated_intro = intro_message
-        else:
-            translation_prompt = f"Translate the following message into {state['language']}:\n{intro_message}"
-            translated_intro = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": translation_prompt}]
-            ).choices[0].message.content.strip()
+        translated_intro = translate_text(intro_message, state['language'])
 
         state["intro_sent"] = True
         state["awaiting_ready"] = True
@@ -99,61 +106,67 @@ def chat():
         if user_input.lower() in ["yes", "ok", "okay", "ready", "sure", "let's go"]:
             state["awaiting_ready"] = False
             session.modified = True
-            return jsonify({"reply": base_questions[0]})
+            return jsonify({"reply": translate_text(base_questions[0], state['language'])})
         else:
-            return jsonify({"reply": "Just let me know when you're ready by typing 'OK' or 'Yes'! 😊"})
+            return jsonify({"reply": translate_text("Just let me know when you're ready by typing 'OK' or 'Yes'! 😊", state['language'])})
 
     if state["conversation_complete"]:
-        return jsonify({"reply": "Thanks again — you're all done! If you'd like to upload client images now, you can do so below. 📷"})
+        return jsonify({"reply": translate_text("Thanks again — you're all done! If you'd like to upload client images now, you can do so below. 📷", state['language'])})
 
     question_index = state["question_index"]
     current_question = base_questions[question_index]
-    state["responses"][current_question] = user_input
+
+    if user_input.lower() in ["skip", "next"]:
+        response = "(User chose to skip this question)"
+    else:
+        response = user_input
+
+    state["responses"][current_question] = response
     state["history"].append({"role": "user", "content": user_input})
 
-    if "koala" in user_input.lower() or "hind wings" in user_input.lower():
+    if any(keyword in user_input.lower() for keyword in ["koala", "hind wings"]):
         session.modified = True
-        return jsonify({"reply": random.choice(humorous_prompts)})
+        return jsonify({"reply": translate_text(random.choice(humorous_prompts), state['language'])})
 
-    summary = "Here’s what the user has already shared:\n"
-    for i in range(question_index + 1):
-        q = base_questions[i]
-        a = state["responses"].get(q, "(no answer)")
-        summary += f"- {q}\n  Answer: {a}\n"
+    if user_input.lower() not in ["skip", "next"]:
+        eval_prompt = f"""You are a structured and friendly chatbot conducting a case study interview.\nBelow is the current answer from the user to this question:\n\"{current_question}\"\n\nAnswer:\n\"{user_input}\"\n\nIs the answer above clear and complete? Answer ONLY with one word:\n- complete\n- incomplete"""
 
-    eval_prompt = f"""You are a structured and friendly chatbot conducting a case study interview.\nBelow is the current answer from the user to this question:\n\"{current_question}\"\n\nAnswer:\n\"{user_input}\"\n\nAlso, here is what has already been shared so far:\n{summary}\n\nIs the answer above clear and complete? Answer ONLY with one word:\n- complete\n- incomplete"""
-
-    eval_result = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": eval_prompt}]
-    ).choices[0].message.content.strip().lower()
-
-    if eval_result == "incomplete" and state["clarification_attempts"] < state["max_clarifications"]:
-        state["clarification_attempts"] += 1
-        clarify_prompt = f"""You are a friendly and structured interviewer collecting information for a case study.\nYou just asked this question:\n\"{current_question}\"\nThe user responded with:\n\"{user_input}\"\nPlease re-ask the same question in a friendly way using the exact wording of the original question:\n\"{current_question}\""""
-        clarification = client.chat.completions.create(
+        eval_result = client.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": clarify_prompt}]
-        ).choices[0].message.content.strip()
-        session.modified = True
-        return jsonify({"reply": clarification})
+            messages=[{"role": "user", "content": eval_prompt}]
+        ).choices[0].message.content.strip().lower()
+
+        if eval_result == "incomplete" and state["clarification_attempts"] < state["max_clarifications"]:
+            state["clarification_attempts"] += 1
+            clarification = translate_text(current_question, state['language'])
+            session.modified = True
+            return jsonify({"reply": clarification})
 
     state["clarification_attempts"] = 0
 
     if question_index < len(base_questions) - 1:
         state["question_index"] += 1
-        next_question = base_questions[state["question_index"]]
+        next_q = base_questions[state["question_index"]]
+        reply = f"{random.choice(encouragements)}\n\n{next_q}"
         session.modified = True
-        return jsonify({"reply": f"{random.choice(encouragements)}\n\n{next_question}"})
+        return jsonify({"reply": translate_text(reply, state['language'])})
     else:
         state["conversation_complete"] = True
+
+        # Save responses to file for marketing
+        filename = f"case_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join("uploads", filename)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(state["responses"], f, ensure_ascii=False, indent=2)
+
         summary_text = "📋 **Your Case Study Summary:**\n"
         for i, q in enumerate(base_questions):
             a = state["responses"].get(q, "(no answer)")
             summary_text += f"\n**Q{i+1}: {q}**\n➡️ {a}\n"
-        summary_text += "\nYou're all set! If you'd like to upload images, you can do that now — logo, site photos, or system screenshots."
+        summary_text += f"\nYour responses have been saved. The marketing team can find them in the file `{filename}`."
+
         session.modified = True
-        return jsonify({"reply": summary_text})
+        return jsonify({"reply": translate_text(summary_text, state['language'])})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
