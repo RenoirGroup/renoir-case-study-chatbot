@@ -76,10 +76,18 @@ def chat():
             "started": False,
             "intro_sent": False,
             "awaiting_ready": False,
-            "conversation_complete": False
+            "conversation_complete": False,
+            "awaiting_restart_confirm": False
         }
 
     state = session['conversation_state']
+
+    if state.get("awaiting_restart_confirm"):
+        if user_input.lower() in ["yes", "ok", "restart", "sure"]:
+            session.pop('conversation_state')
+            return jsonify({"reply": "Great! Starting a new case study... 🧠\n\nWhat language would you like to use? (e.g., English, Portuguese, Spanish)"})
+        else:
+            return jsonify({"reply": "Okay, I'll stay here if you need me! Let me know if you'd like to start over."})
 
     if not state["started"]:
         state["started"] = True
@@ -111,7 +119,9 @@ def chat():
             return jsonify({"reply": translate_text("Just let me know when you're ready by typing 'OK' or 'Yes'! 😊", state['language'])})
 
     if state["conversation_complete"]:
-        return jsonify({"reply": translate_text("Thanks again — you're all done! If you'd like to upload client images now, you can do so below. 📷", state['language'])})
+        state["awaiting_restart_confirm"] = True
+        session.modified = True
+        return jsonify({"reply": translate_text("You've already completed this case study. Would you like to start a new one? (Yes/No)", state['language'])})
 
     question_index = state["question_index"]
     current_question = base_questions[question_index]
@@ -153,7 +163,6 @@ def chat():
     else:
         state["conversation_complete"] = True
 
-        # Save responses to file for marketing
         filename = f"case_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join("uploads", filename)
         with open(filepath, "w", encoding="utf-8") as f:
@@ -184,4 +193,4 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
