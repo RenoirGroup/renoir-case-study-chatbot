@@ -16,7 +16,7 @@ CORS(app)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 base_questions = [
-    "To start of can you tell me the client's name, their industry and location?",
+    "To start off with can you tell me the client's name, their industry and location?",
     "What were the main challenges or problems the client was facing before the project / were identified from the analysis? Try to cover things like process issues, cultural challenges, or operational bottlenecks.",
     "Were there any measurable goals committed for this project / what did we commit to, in terms of a business case, following on from the analysis (if one was carried out)?",
     "What were the main initiatives or tools introduced during the project? Please list at least 3 key initiatives.",
@@ -37,6 +37,7 @@ language_choices = [
 
 @app.route("/")
 def home():
+    session.clear()  # Reset state for new visitor
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
