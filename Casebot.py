@@ -17,6 +17,16 @@ CORS(app)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+supported_languages = [
+    "English",
+    "Spanish",
+    "Portuguese",
+    "Chinese (Mandarin)",
+    "Indonesian Bahasa",
+    "Malaysian Bahasa",
+    "French"
+]
+
 base_questions = [
     "To start of can you tell me the client's name, their industry and location?",
     "What were the main challenges or problems the client was facing before the project / were identified from the analysis? Try to cover things like process issues, cultural challenges, or operational bottlenecks.",
@@ -89,17 +99,21 @@ def chat():
     if state.get("awaiting_restart_confirm"):
         if user_input.lower() in ["yes", "ok", "restart", "sure"]:
             session.pop('conversation_state')
-            return jsonify({"reply": "Great! Starting a new case study... 🧠\n\nWhat language would you like to use? (e.g., English, Portuguese, Spanish)"})
+            return jsonify({"reply": "Great! Starting a new case study... 🧠\n\nPlease choose a language:\n- " + "\n- ".join(supported_languages)})
         else:
             return jsonify({"reply": "Okay, I'll stay here if you need me! Let me know if you'd like to start over."})
 
     if not state["started"]:
         state["started"] = True
         session.modified = True
-        return jsonify({"reply": "🧠 Hi! I’m the Renoir Case Study Chatbot. What language would you like to use? (e.g., English, Portuguese, Spanish)"})
+        return jsonify({"reply": "🧠 Hi! I’m the Renoir Case Study Chatbot. Please choose a language:\n- " + "\n- ".join(supported_languages)})
 
     if not state["language_selected"]:
-        state["language"] = user_input.capitalize()
+        selected = [lang for lang in supported_languages if lang.lower() in user_input.lower()]
+        if selected:
+            state["language"] = selected[0]
+        else:
+            state["language"] = "English"
         state["language_selected"] = True
 
         intro_message = (
@@ -201,4 +215,5 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
