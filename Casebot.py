@@ -18,7 +18,7 @@ CORS(app)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 base_questions = [
-    "To start of wan you tell me the client's name, their industry and location?",
+    "To start of can you tell me the client's name, their industry and location?",
     "What were the main challenges or problems the client was facing before the project / were identified from the analysis? Try to cover things like process issues, cultural challenges, or operational bottlenecks.",
     "Were there any measurable goals committed for this project / what did we commit to, in terms of a business case, following on from the analysis (if one was carried out)?",
     "What were the main initiatives or tools introduced during the project? Please list at least 3 key initiatives.",
@@ -56,6 +56,10 @@ def translate_text(text, lang):
     except:
         return text
 
+@app.before_request
+def make_session_permanent():
+    session.permanent = False
+
 @app.route("/")
 def home():
     return render_template("index.html", title="Renoir Case Study Chatbot")
@@ -64,7 +68,7 @@ def home():
 def chat():
     user_input = request.json.get("message").strip()
 
-    if 'conversation_state' not in session:
+    if 'conversation_state' not in session or user_input.lower() in ["restart", "new", "start"]:
         session['conversation_state'] = {
             "question_index": 0,
             "history": [],
@@ -172,7 +176,7 @@ def chat():
         for i, q in enumerate(base_questions):
             a = state["responses"].get(q, "(no answer)")
             summary_text += f"\n**Q{i+1}: {q}**\n➡️ {a}\n"
-        summary_text += f"\nYour responses have been saved. The marketing team can find them in the file `{filename}`."
+        summary_text += f"\nYour responses have been saved. The marketing team can find them in the file `{filename}`.\n\nIf you'd like to start a new case study, just type 'restart'."
 
         session.modified = True
         return jsonify({"reply": translate_text(summary_text, state['language'])})
