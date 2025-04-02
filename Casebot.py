@@ -125,7 +125,14 @@ def chat():
             session.modified = True
             return jsonify({"reply": base_questions[0]})
         else:
-            return jsonify({"reply": "Just let me know when you're ready by typing 'OK' or 'Yes'! 😊"})
+            prompt = "Just let me know when you're ready by typing 'OK' or 'Yes'! 😊"
+            if "english" not in state["language"].lower():
+                translation_prompt = f"Translate the following into {state['language']}: {prompt}"
+                prompt = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": translation_prompt}]
+                ).choices[0].message.content.strip()
+            return jsonify({"reply": prompt})
 
     if state["conversation_complete"]:
         return jsonify({"reply": "Thanks again — you're all done! If you'd like to upload client images now, you can do so below. 📷"})
@@ -196,5 +203,4 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
 
