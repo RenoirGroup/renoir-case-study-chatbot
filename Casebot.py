@@ -135,6 +135,9 @@ def chat():
     else:
         response = user_input
 
+    if state["responses"].get(current_question) and user_input.lower() in ["asked and answered", "already answered"]:
+        response = state["responses"][current_question]
+
     state["responses"][current_question] = response
     state["history"].append({"role": "user", "content": user_input})
 
@@ -142,7 +145,7 @@ def chat():
         session.modified = True
         return jsonify({"reply": translate_text(random.choice(humorous_prompts), state['language'])})
 
-    if user_input.lower() not in ["skip", "next"]:
+    if user_input.lower() not in ["skip", "next", "asked and answered", "already answered"]:
         eval_prompt = f"""You are a structured and friendly chatbot conducting a case study interview.\nBelow is the current answer from the user to this question:\n\"{current_question}\"\n\nAnswer:\n\"{user_input}\"\n\nIs the answer above clear and complete? Answer ONLY with one word:\n- complete\n- incomplete"""
 
         eval_result = client.chat.completions.create(
@@ -152,9 +155,9 @@ def chat():
 
         if eval_result == "incomplete" and state["clarification_attempts"] < state["max_clarifications"]:
             state["clarification_attempts"] += 1
-            clarification = translate_text(current_question, state['language'])
+            clarification = f"Thanks! Can you tell me a bit more? {current_question}"
             session.modified = True
-            return jsonify({"reply": clarification})
+            return jsonify({"reply": translate_text(clarification, state['language'])})
 
     state["clarification_attempts"] = 0
 
@@ -198,3 +201,4 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
