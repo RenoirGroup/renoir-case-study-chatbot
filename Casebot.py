@@ -25,6 +25,16 @@ base_questions = [
     "Finally — how will the client sustain these improvements after the project finishes? What processes, reviews, or systems are being embedded to lock in the gains?"
 ]
 
+language_options = [
+    "English",
+    "Spanish",
+    "Portuguese",
+    "Chinese (Mandarin)",
+    "Bahasa Indonesia",
+    "Bahasa Malaysia",
+    "French"
+]
+
 encouragements = [
     "Great, thank you!",
     "Appreciate that.",
@@ -71,11 +81,21 @@ def chat():
     if not state["started"]:
         state["started"] = True
         session.modified = True
-        return jsonify({"reply": "🧠 Hi! I’m the Renoir Case Study Chatbot. What language would you like to use? (e.g., English, Portuguese, Spanish)"})
+        return jsonify({
+            "reply": "🧠 Hi! I’m the Renoir Case Study Chatbot. What language would you like to use?",
+            "language_options": language_options
+        })
 
     if not state["language_selected"]:
-        state["language"] = user_input.capitalize()
-        state["language_selected"] = True
+        matched = [lang for lang in language_options if lang.lower() == user_input.lower()]
+        if matched:
+            state["language"] = matched[0]
+            state["language_selected"] = True
+        else:
+            return jsonify({
+                "reply": "Please choose a valid language from the options below:",
+                "language_options": language_options
+            })
 
         intro_message = (
             "Welcome! I’m here to guide you through a few questions so we can build a great case study around your project. "
