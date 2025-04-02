@@ -91,12 +91,15 @@ def chat():
         if matched:
             state["language"] = matched[0]
             state["language_selected"] = True
+            state["intro_sent"] = False
+            state["awaiting_ready"] = False
         else:
             return jsonify({
                 "reply": "Please choose a valid language from the options below:",
                 "language_options": language_options
             })
 
+    if not state["intro_sent"]:
         intro_message = (
             "Welcome! I’m here to guide you through a few questions so we can build a great case study around your project. "
             "If I need more detail at any point, I’ll ask – just answer as fully as you can. Ready? Let’s get started!"
@@ -193,4 +196,5 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
