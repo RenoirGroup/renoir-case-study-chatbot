@@ -72,13 +72,14 @@ def make_session_permanent():
 
 @app.route("/")
 def home():
+    session.pop('conversation_state', None)  # always clear state on page load
     return render_template("index.html", title="Renoir Case Study Chatbot")
 
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message").strip()
 
-    if 'conversation_state' not in session or user_input.lower() in ["restart", "new", "start"]:
+    if 'conversation_state' not in session:
         session['conversation_state'] = {
             "question_index": 0,
             "history": [],
@@ -99,9 +100,9 @@ def chat():
     if state.get("awaiting_restart_confirm"):
         if user_input.lower() in ["yes", "ok", "restart", "sure"]:
             session.pop('conversation_state')
-            return jsonify({"reply": "Great! Starting a new case study... 🧠\n\nPlease choose a language:\n- " + "\n- ".join(supported_languages)})
+            return jsonify({"reply": "🧠 Hi! I’m the Renoir Case Study Chatbot. Please choose a language:\n- " + "\n- ".join(supported_languages)})
         else:
-            return jsonify({"reply": "Okay, I'll stay here if you need me! Let me know if you'd like to start over."})
+            return jsonify({"reply": "Okay, I’ll stay here if you need me! Let me know if you’d like to start over."})
 
     if not state["started"]:
         state["started"] = True
