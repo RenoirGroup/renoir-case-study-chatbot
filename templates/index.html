@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Renoir Case Study Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      padding: 20px;
+    }
+    .chat-container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    #chat-box {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      height: 300px;
+      overflow-y: auto;
+      background: #fff;
+      margin-bottom: 10px;
+    }
+    .chat-message {
+      margin: 5px 0;
+    }
+    .chat-message.bot {
+      font-weight: bold;
+      color: #444;
+    }
+    .chat-message.user {
+      text-align: right;
+      color: #0066cc;
+    }
+    #input-form {
+      display: flex;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    #send {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #loading {
+      font-style: italic;
+      color: #999;
+    }
+    .upload-section {
+      margin-top: 20px;
+    }
+    .upload-section h3 {
+      margin-bottom: 10px;
+    }
+    .upload-section input[type="file"] {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <h1>🧠 Renoir Case Study Chatbot</h1>
+    <div id="chat-box"></div>
+
+    <form id="input-form">
+      <input type="text" id="input" placeholder="Type your answer..." autocomplete="off" />
+      <button type="submit" id="send">Send</button>
+    </form>
+
+    <div class="upload-section">
+      <h3>Upload Images</h3>
+      <label>Client Logo: <input type="file" id="logo-upload" multiple></label><br>
+      <label>Site Photos: <input type="file" id="site-upload" multiple></label><br>
+      <label>Charts / Screenshots: <input type="file" id="graphs-upload" multiple></label><br>
+      <button onclick="uploadFiles('logo')">Upload Logo</button>
+      <button onclick="uploadFiles('site')">Upload Site Photos</button>
+      <button onclick="uploadFiles('graphs')">Upload Charts</button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chat-box');
+    const inputForm = document.getElementById('input-form');
+    const inputField = document.getElementById('input');
+
+    function appendMessage(sender, message) {
+      const div = document.createElement('div');
+      div.classList.add('chat-message', sender);
+      div.innerText = `${sender === 'user' ? 'You' : 'Bot'}: ${message}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage(message) {
+      if (message) {
+        appendMessage('user', message);
+      }
+
+      const loading = document.createElement('div');
+      loading.id = 'loading';
+      loading.innerText = 'Bot is typing...';
+      chatBox.appendChild(loading);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+
+      chatBox.removeChild(loading);
+      const data = await res.json();
+      appendMessage('bot', data.reply);
+    }
+
+    inputForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const message = inputField.value.trim();
+      if (message) {
+        sendMessage(message);
+        inputField.value = '';
+      }
+    });
+
+    window.onload = () => {
+      // Trigger intro only once with empty message
+      sendMessage('');
+    };
+
+    async function uploadFiles(type) {
+      const inputId = `${type}-upload`;
+      const inputElem = document.getElementById(inputId);
+      const files = inputElem.files;
+
+      if (files.length === 0) {
+        alert('Please select at least one file.');
+        return;
+      }
+
+      for (let file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type);
+
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+        alert(result.message || result.error);
+      }
+    }
+  </script>
+</body>
+</html>
