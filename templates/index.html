@@ -70,12 +70,27 @@
     .upload-section input[type="file"] {
       margin-bottom: 10px;
     }
+    #button-container {
+      margin: 10px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .lang-button {
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div class="chat-container">
     <h1>🧠 Renoir Case Study Chatbot</h1>
     <div id="chat-box"></div>
+
+    <div id="button-container"></div>
 
     <form id="input-form">
       <input type="text" id="input" placeholder="Type your answer..." autocomplete="off" />
@@ -97,6 +112,7 @@
     const chatBox = document.getElementById('chat-box');
     const inputForm = document.getElementById('input-form');
     const inputField = document.getElementById('input');
+    const buttonContainer = document.getElementById('button-container');
 
     function appendMessage(sender, message) {
       const div = document.createElement('div');
@@ -125,7 +141,24 @@
 
       chatBox.removeChild(loading);
       const data = await res.json();
+
       appendMessage('bot', data.reply);
+      renderButtons(data.language_options);
+    }
+
+    function renderButtons(options) {
+      buttonContainer.innerHTML = '';
+      if (!options || !Array.isArray(options)) return;
+      options.forEach(lang => {
+        const btn = document.createElement('button');
+        btn.classList.add('lang-button');
+        btn.innerText = lang;
+        btn.onclick = (e) => {
+          e.preventDefault();
+          sendMessage(lang);
+        };
+        buttonContainer.appendChild(btn);
+      });
     }
 
     inputForm.addEventListener('submit', e => {
@@ -138,7 +171,6 @@
     });
 
     window.onload = () => {
-      // Trigger intro only once with empty message
       sendMessage('');
     };
 
