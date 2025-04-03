@@ -35,6 +35,16 @@ language_options = [
     "French"
 ]
 
+readiness_keywords = {
+    "English": ["yes", "ok", "okay", "ready", "sure", "let's go"],
+    "French": ["oui", "ok", "d'accord", "prêt", "allons-y"],
+    "Spanish": ["sí", "ok", "claro", "listo", "vamos"],
+    "Portuguese": ["sim", "ok", "claro", "pronto", "vamos"],
+    "Chinese (Mandarin)": ["好的", "是", "可以", "开始"],
+    "Bahasa Indonesia": ["ya", "ok", "siap", "ayo"],
+    "Bahasa Malaysia": ["ya", "ok", "sedia", "mula"]
+}
+
 encouragements = [
     "Great, thank you!",
     "Appreciate that.",
@@ -77,7 +87,6 @@ def chat():
         }
 
     state = session['conversation_state']
-    print("[DEBUG] Language Selected:", state.get("language"))  # ✅ debug log
 
     if not state["started"]:
         state["started"] = True
@@ -92,8 +101,6 @@ def chat():
         if matched:
             state["language"] = matched[0]
             state["language_selected"] = True
-            state["intro_sent"] = False
-            state["awaiting_ready"] = False
             session.modified = True
         else:
             return jsonify({
@@ -122,7 +129,8 @@ def chat():
         return jsonify({"reply": translated_intro})
 
     if state["awaiting_ready"]:
-        if user_input.lower() in ["yes", "ok", "okay", "ready", "sure", "let's go"]:
+        allowed_words = readiness_keywords.get(state["language"], readiness_keywords["English"])
+        if user_input.lower() in [word.lower() for word in allowed_words]:
             state["awaiting_ready"] = False
             session.modified = True
             return jsonify({"reply": base_questions[0]})
@@ -205,5 +213,4 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
 
