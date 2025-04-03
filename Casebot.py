@@ -25,7 +25,8 @@ def translate_message(message, language):
     ).choices[0].message.content.strip()
 
 base_questions = [
-    "Can you please tell me the name of the client, their industry and location?",
+    "Can I ask for your name and email before we get started?",
+    "Could you tell me the client's name, their industry and location?",
     "What were the main challenges or problems the client was facing before the project / were identified from the analysis? Try to cover things like process issues, cultural challenges, or operational bottlenecks.",
     "What were the measurable goals for this project / what did we commit to following on from the analysis (if one was carried out)?. Eg: increase throughput by 15%, improve sales conversions by 25%",
     "What were the main initiatives or tools introduced during the project? Please list at least 3 key initiatives. Eg: introduced short interval control; improved root cause analysis, introduced a CRM system",
@@ -208,6 +209,7 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
