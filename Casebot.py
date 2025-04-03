@@ -16,12 +16,12 @@ CORS(app)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 base_questions = [
-    "What is the client name and what was the client’s industry and location?",
+    "Can you please tell me the name of the client, their industry and location?",
     "What were the main challenges or problems the client was facing before the project / were identified from the analysis? Try to cover things like process issues, cultural challenges, or operational bottlenecks.",
-    "What were the measurable goals for this project / what did we commit to following on from the analysis (if one was carried out)?",
-    "What were the main initiatives or tools introduced during the project? Please list at least 3 key initiatives.",
+    "What were the measurable goals for this project / what did we commit to following on from the analysis (if one was carried out)?. Eg: increase throughput by 15%, improve sales conversions by 25%",
+    "What were the main initiatives or tools introduced during the project? Please list at least 3 key initiatives. Eg: introduced short interval control; improved root cause analysis, introduced a CRM system",
     "Let’s capture the results! Please share measurable gains such as throughput improvement, overtime reduction, or other financial or operational results.",
-    "Do you have any client feedback or quotes we can include? Please include the client’s name and role if possible.",
+    "Do you have any client feedback or quotes we can include? Please include the client’s name and their role if possible.",
     "Finally — how will the client sustain these improvements after the project finishes? What processes, reviews, or systems are being embedded to lock in the gains?"
 ]
 
