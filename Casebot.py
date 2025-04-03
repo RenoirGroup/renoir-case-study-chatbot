@@ -8,7 +8,7 @@ import random
 from uuid import uuid4
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", str(uuid4()))  # Secure random key for sessions
+app.secret_key = os.getenv("FLASK_SECRET_KEY", str(uuid4()))
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 CORS(app)
@@ -54,7 +54,7 @@ humorous_prompts = [
 
 @app.route("/")
 def home():
-    session.clear()  # Ensure fresh start
+    session.clear()
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
@@ -77,6 +77,7 @@ def chat():
         }
 
     state = session['conversation_state']
+    print("[DEBUG] Language Selected:", state.get("language"))  # ✅ debug log
 
     if not state["started"]:
         state["started"] = True
@@ -93,6 +94,7 @@ def chat():
             state["language_selected"] = True
             state["intro_sent"] = False
             state["awaiting_ready"] = False
+            session.modified = True
         else:
             return jsonify({
                 "reply": "Please choose a valid language from the options below:",
@@ -203,4 +205,5 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
