@@ -18,8 +18,8 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def translate_message(message, language):
     if language.lower() == "english":
         return message
-    prompt = f"Translate the following message into {language}:
-{message}"
+    prompt = f"""Translate the following message into {language}:
+{message}"""
     return client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
@@ -28,8 +28,8 @@ def translate_message(message, language):
 def translate_user_response(response, target_language):
     if target_language.lower() == "english":
         return response
-    prompt = f"Translate this user's answer into English:
-{response}"
+    prompt = f"""Translate this user's answer into English:
+{response}"""
     return client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
@@ -200,7 +200,7 @@ def chat():
         for i, q in enumerate(base_questions):
             a = state["responses"].get(q, "(no answer)")
             translated_a = translate_user_response(a, "English")
-            summary_text += f"\n**Q{i+1}: {q}**\n➡️ {a}\n"
+            summary_text += f"\n**Q{i+1}: {q}**\n➡️ {translated_a}\n"
             translated_q = translate_message(q, state["language"])
             translated_text += f"\n**Q{i+1} : {translated_q}**\n➡️ {a}\n"
 
