@@ -188,9 +188,11 @@ def chat():
         for i, q in enumerate(base_questions):
             a = state["responses"].get(q, "(no answer)")
             summary_text += f"\n**Q{i+1}: {q}**\n➡️ {a}\n"
+        translated_summary = translate_message(summary_text, state["language"])
+        summary_text += "\n\n🌐 **Translated Summary:**\n" + translated_summary
         summary_text += "\nYou're all set! If you'd like to upload images, you can do that now — logo, site photos, or system screenshots."
         session.modified = True
-        return jsonify({"reply": translate_message(summary_text, state["language"])})
+        return jsonify({"reply": summary_text})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
