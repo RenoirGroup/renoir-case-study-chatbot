@@ -38,7 +38,7 @@ language_options = [
 readiness_keywords = {
     "English": ["yes", "ok", "okay", "ready", "sure", "let's go"],
     "French": ["oui", "ok", "d'accord", "prêt", "allons-y"],
-    "Spanish": ["sí", "ok", "claro", "listo", "vamos"],
+    "Spanish": ["sí", "si", "ok", "claro", "listo", "vamos"],
     "Portuguese": ["sim", "ok", "claro", "pronto", "vamos"],
     "Chinese (Mandarin)": ["好的", "是", "可以", "开始"],
     "Bahasa Indonesia": ["ya", "ok", "siap", "ayo"],
