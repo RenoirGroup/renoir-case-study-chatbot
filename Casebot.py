@@ -69,9 +69,9 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_input = request.json.get("message", "").strip()
+    user_input = request.json.get("message", "").strip().lower()
 
-    if 'conversation_state' not in session or user_input.lower() == 'restart':
+    if 'conversation_state' not in session or user_input == 'restart':
         session['conversation_state'] = {
             "question_index": 0,
             "history": [],
@@ -97,7 +97,7 @@ def chat():
         })
 
     if not state["language_selected"]:
-        matched = [lang for lang in language_options if lang.lower() == user_input.lower()]
+        matched = [lang for lang in language_options if lang.lower() == user_input]
         if matched:
             state["language"] = matched[0]
             state["language_selected"] = True
@@ -130,7 +130,7 @@ def chat():
 
     if state["awaiting_ready"]:
         allowed_words = readiness_keywords.get(state["language"], readiness_keywords["English"])
-        if user_input.lower() in [word.lower() for word in allowed_words]:
+        if user_input in [word.lower() for word in allowed_words]:
             state["awaiting_ready"] = False
             session.modified = True
             return jsonify({"reply": base_questions[0]})
@@ -152,7 +152,7 @@ def chat():
     state["responses"][current_question] = user_input
     state["history"].append({"role": "user", "content": user_input})
 
-    if "koala" in user_input.lower() or "hind wings" in user_input.lower():
+    if "koala" in user_input or "hind wings" in user_input:
         session.modified = True
         return jsonify({"reply": random.choice(humorous_prompts)})
 
@@ -213,5 +213,6 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
