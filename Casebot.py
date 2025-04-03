@@ -18,7 +18,18 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def translate_message(message, language):
     if language.lower() == "english":
         return message
-    prompt = f"Translate the following message into {language}:\n{message}"
+    prompt = f"Translate the following message into {language}:
+{message}"
+    return client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
+    ).choices[0].message.content.strip()
+
+def translate_user_response(response, target_language):
+    if target_language.lower() == "english":
+        return response
+    prompt = f"Translate this user's answer into English:
+{response}"
     return client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
@@ -185,11 +196,15 @@ def chat():
     else:
         state["conversation_complete"] = True
         summary_text = "📋 **Your Case Study Summary:**\n"
+        translated_text = "📋 **Résumé de votre Étude de Cas :**\n"
         for i, q in enumerate(base_questions):
             a = state["responses"].get(q, "(no answer)")
+            translated_a = translate_user_response(a, "English")
             summary_text += f"\n**Q{i+1}: {q}**\n➡️ {a}\n"
-        translated_summary = translate_message(summary_text, state["language"])
-        summary_text += "\n\n🌐 **Translated Summary:**\n" + translated_summary
+            translated_q = translate_message(q, state["language"])
+            translated_text += f"\n**Q{i+1} : {translated_q}**\n➡️ {a}\n"
+
+        summary_text += "\n\n🌐 **Translated Summary:**\n" + translated_text
         summary_text += "\nYou're all set! If you'd like to upload images, you can do that now — logo, site photos, or system screenshots."
         session.modified = True
         return jsonify({"reply": summary_text})
@@ -211,6 +226,7 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
