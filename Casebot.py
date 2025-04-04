@@ -15,21 +15,21 @@ CORS(app)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Translation helper
+
 def translate_message(message, language):
     if language.lower() == "english":
         return message
-    prompt = f"""Translate the following message into {language}:
-{message}"""
+    prompt = f"Translate this message into {language}:\n{message}"
     return client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
     ).choices[0].message.content.strip()
 
-def translate_user_response(response, target_language):
-    if target_language.lower() == "english":
+def translate_response_to_english(response, source_lang):
+    if source_lang.lower() == "english":
         return response
-    prompt = f"""Translate this user's answer into English:
-{response}"""
+    prompt = f"Translate this user's answer from {source_lang} into English:\n{response}"
     return client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
@@ -130,32 +130,31 @@ def chat():
             })
 
     if not state["intro_sent"]:
-        intro_message = (
+        intro_text = (
             "Welcome! I’m here to guide you through a few questions so we can build a great case study around your project. "
             "If I need more detail at any point, I’ll ask – just answer as fully as you can. Ready? Let’s get started!"
         )
-        translated_intro = translate_message(intro_message, state["language"])
+        translated = translate_message(intro_text, state["language"])
         state["intro_sent"] = True
         state["awaiting_ready"] = True
         session.modified = True
-        return jsonify({"reply": translated_intro})
+        return jsonify({"reply": translated})
 
     if state["awaiting_ready"]:
-        allowed_words = readiness_keywords.get(state["language"], readiness_keywords["English"])
-        if user_input.lower() in [word.lower() for word in allowed_words]:
+        allowed = readiness_keywords.get(state["language"], readiness_keywords["English"])
+        if user_input.lower() in [w.lower() for w in allowed]:
             state["awaiting_ready"] = False
             session.modified = True
             return jsonify({"reply": translate_message(base_questions[0], state["language"])})
         else:
-            prompt = "Just let me know when you're ready by typing 'OK' or 'Yes'! 😊"
-            translated_prompt = translate_message(prompt, state["language"])
-            return jsonify({"reply": translated_prompt})
+            wait_text = "Just let me know when you're ready by typing 'OK' or 'Yes'! 😊"
+            return jsonify({"reply": translate_message(wait_text, state["language"])})
 
     if state["conversation_complete"]:
         return jsonify({"reply": translate_message("Thanks again — you're all done! If you'd like to upload client images now, you can do so below. 📷", state["language"])})
 
-    question_index = state["question_index"]
-    current_question = base_questions[question_index]
+    q_index = state["question_index"]
+    current_question = base_questions[q_index]
     state["responses"][current_question] = user_input
     state["history"].append({"role": "user", "content": user_input})
 
@@ -164,7 +163,7 @@ def chat():
         return jsonify({"reply": random.choice(humorous_prompts)})
 
     summary = "Here’s what the user has already shared:\n"
-    for i in range(question_index + 1):
+    for i in range(q_index + 1):
         q = base_questions[i]
         a = state["responses"].get(q, "(no answer)")
         summary += f"- {q}\n  Answer: {a}\n"
@@ -178,36 +177,34 @@ def chat():
 
     if eval_result == "incomplete" and state["clarification_attempts"] < state["max_clarifications"]:
         state["clarification_attempts"] += 1
-        clarify_prompt = f"""You are a friendly and structured interviewer collecting information for a case study.\nYou just asked this question:\n\"{current_question}\"\nThe user responded with:\n\"{user_input}\"\nPlease re-ask the same question in a friendly way using the exact wording of the original question:\n\"{current_question}\""""
-        clarification = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": clarify_prompt}]
-        ).choices[0].message.content.strip()
+        clarify_prompt = f"You just asked this question:\n\"{current_question}\"\nThe user responded with:\n\"{user_input}\"\nRephrase it politely and re-ask the same question in the original language ({state['language']}):\n{current_question}"
+        clarification = translate_message(current_question, state["language"])
         session.modified = True
         return jsonify({"reply": clarification})
 
     state["clarification_attempts"] = 0
 
-    if question_index < len(base_questions) - 1:
+    if q_index < len(base_questions) - 1:
         state["question_index"] += 1
-        next_question = base_questions[state["question_index"]]
+        next_q = base_questions[state["question_index"]]
         session.modified = True
-        return jsonify({"reply": translate_message(f"{random.choice(encouragements)}\n\n{next_question}", state["language"])})
+        return jsonify({"reply": translate_message(f"{random.choice(encouragements)}\n\n{next_q}", state["language"])})
     else:
         state["conversation_complete"] = True
-        summary_text = "📋 **Your Case Study Summary:**\n"
-        translated_text = "📋 **Résumé de votre Étude de Cas :**\n"
+        lang = state["language"]
+        summary = "📋 **Your Case Study Summary:**\n"
+        translated = f"📋 **Résumé de votre Étude de Cas :**\n" if lang == "French" else f"📋 **{translate_message('Your Case Study Summary', lang)} :**\n"
         for i, q in enumerate(base_questions):
             a = state["responses"].get(q, "(no answer)")
-            translated_a = translate_user_response(a, "English")
-            summary_text += f"\n**Q{i+1}: {q}**\n➡️ {translated_a}\n"
-            translated_q = translate_message(q, state["language"])
-            translated_text += f"\n**Q{i+1} : {translated_q}**\n➡️ {a}\n"
+            translated_a = translate_response_to_english(a, lang)
+            summary += f"\n**Q{i+1}: {q}**\n➡️ {translated_a}\n"
+            translated_q = translate_message(q, lang)
+            translated += f"\n**Q{i+1} : {translated_q}**\n➡️ {a}\n"
 
-        summary_text += "\n\n🌐 **Translated Summary:**\n" + translated_text
-        summary_text += "\nYou're all set! If you'd like to upload images, you can do that now — logo, site photos, or system screenshots."
+        final = summary + "\n\n🌐 **Translated Summary:**\n" + translated
+        final += "\nYou're all set! If you'd like to upload images, you can do that now — logo, site photos, or system screenshots."
         session.modified = True
-        return jsonify({"reply": summary_text})
+        return jsonify({"reply": final})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -226,6 +223,7 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
